@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>PSAB Collection Opportunity Analysis</title>
+    <script src="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js"></script>
+    <link href="https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; }
+        html, body, #cesiumContainer { width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden; background: #000; }
+
+        #overlay {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(5, 8, 15, 0.88);
+            color: white;
+            padding: 18px 22px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            z-index: 10;
+            border: 1px solid #1a3a5c;
+            width: 320px;
+            pointer-events: none;
+            backdrop-filter: blur(6px);
+        }
+        #overlay h2 {
+            margin: 0 0 4px 0;
+            font-size: 13px;
+            color: #00e5ff;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .subtitle { font-size: 11px; color: #556; margin: 0 0 12px 0; }
+        hr { border: 0; border-top: 1px solid #1a3a5c; margin: 10px 0; }
+        #time-text { font-size: 11px; color: #7a9ab5; margin-bottom: 6px; }
+        #status-text { font-size: 12px; min-height: 18px; }
+        #pass-list { font-size: 10px; color: #7a9ab5; margin-top: 8px; max-height: 120px; overflow-y: auto; }
+        #pass-list div { padding: 2px 0; border-bottom: 1px solid #111; }
+        .mode-warp    { color: #445566; }
+        .mode-capture { color: #00ff88; text-shadow: 0 0 8px #00ff8866; }
+        .airbus-tag   { color: #ff4c4c; font-weight: bold; }
+
+        .leg-row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+        .leg-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+<div id="cesiumContainer"></div>
+
+<div id="overlay">
+    <h2>◈ OPPORTUNITY ANALYSIS</h2>
+    <div class="subtitle">Target: Prince Sultan AB (PSAB) · Feb 23–27 2026</div>
+    <div id="time-text">—</div>
+    <hr>
+    <div id="status-text"><span class="mode-warp">● INITIALIZING</span></div>
+    <div id="pass-list"></div>
+    <hr style="border-color:#1a3a5c; margin:8px 0;">
+    <div style="color:#00e5ff; letter-spacing:1px; margin-bottom:6px; font-size:10px;">CONSTELLATION KEY</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff4c4c;border:1px solid white"></div>Airbus (SPOT / Pleiades)</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#00c8ff"></div>Jilin-1 (Chang Guang)</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ffd700"></div>SuperView</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#00ff88"></div>Gaofen (CNSA)</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#ff8c00"></div>Yaogan (PLA)</div>
+    <div class="leg-row"><div class="leg-dot" style="background:#aaaaaa"></div>Other</div>
+    <div class="leg-row" style="margin-top:4px;"><div style="width:10px;height:10px;border:2px dashed #ffffff55;flex-shrink:0"></div>Sensor cone (15° off-nadir)</div>
+</div>
+
+
+<script>
+// ── Cesium init ───────────────────────────────────────────────────────────────
+const viewer = new Cesium.Viewer('cesiumContainer', {
+    shouldAnimate: true,
+    baseLayerPicker: false,
+    baseLayer: false,
+    geocoder: false,
+    navigationHelpButton: false,
+    selectionIndicator: false,
+    infoBox: false,
+    timeline: true,
+    animation: true,
+});
+viewer.cesiumWidget.creditContainer.style.display = "none";
+
+// Satellite imagery basemap
+Cesium.ArcGisMapServerImageryProvider
+    .fromUrl('https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer')
+    .then(p => {
+        viewer.imageryLayers.addImageryProvider(p);
+        viewer.scene.globe.enableLighting = true;
+    });
+
+// ── Time window ───────────────────────────────────────────────────────────────
+const WIN_START = Cesium.JulianDate.fromIso8601("2026-02-23T00:00:00Z");
+const WIN_END   = Cesium.JulianDate.fromIso8601("2026-02-27T23:59:59Z");
+
+viewer.clock.startTime   = WIN_START.clone();
+viewer.clock.stopTime    = WIN_END.clone();
+viewer.clock.currentTime = WIN_START.clone();
+viewer.clock.clockRange  = Cesium.ClockRange.LOOP_STOP;
+viewer.clock.multiplier  = 3000;  // start in fast-forward
+viewer.timeline.zoomTo(WIN_START, WIN_END);
+
+// ── Target ────────────────────────────────────────────────────────────────────
+const TARGET_LON = 47.56129747;
+const TARGET_LAT = 24.06242524;
+const TARGET_ALT = 481;
+const targetPos  = Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, TARGET_ALT);
+
+viewer.entities.add({
+    name: "TARGET_PSAB",
+    position: targetPos,
+    point: {
+        pixelSize: 14,
+        color: Cesium.Color.RED,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    },
+    label: {
+        text: "PSAB",
+        font: "bold 11px 'Courier New'",
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        pixelOffset: new Cesium.Cartesian2(0, -22),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+    }
+});
+
+// ── Colour by satellite family ────────────────────────────────────────────────
+function familyColor(name) {
+    const n = name.toUpperCase();
+    if (n.includes("PLEIADES") || n.includes("SPOT")) return Cesium.Color.fromCssColorString("#FF4C4C");
+    if (n.includes("JILIN"))    return Cesium.Color.fromCssColorString("#00C8FF");
+    if (n.includes("SUPERVIEW"))return Cesium.Color.fromCssColorString("#FFD700");
+    if (n.includes("GAOFEN"))   return Cesium.Color.fromCssColorString("#00FF88");
+    if (n.includes("YAOGAN"))   return Cesium.Color.fromCssColorString("#FF8C00");
+    return Cesium.Color.fromCssColorString("#AAAAAA");
+}
+
+function isAirbus(name) {
+    const n = name.toUpperCase();
+    return n.includes("PLEIADES") || n.includes("SPOT");
+}
+
+// ── Sensor cone helper ────────────────────────────────────────────────────────
+// Creates a cone entity representing the sensor's field of regard.
+// The cone is attached to the satellite entity via a CallbackProperty
+// so it points from satellite toward Earth center (nadir direction).
+// Half-angle = MAX_OFF_NADIR_DEG = 15° from JILIN5.py config.
+const CONE_HALF_ANGLE_RAD = Cesium.Math.toRadians(15.0);
+
+function addSensorCone(satEntity, color, avail) {
+    // CylinderGraphics is centered at the entity position by default.
+    // To place the vertex AT the satellite with the cone opening toward Earth:
+    //   1. Offset the cone entity position by -length/2 along the nadir vector
+    //      so the top rim (wide end) sits at the satellite position.
+    //   2. topRadius = wide end (at satellite), bottomRadius = 0 (vertex below).
+    const CONE_LENGTH = 650000; // metres
+
+    const conePosition = new Cesium.CallbackProperty((time) => {
+        const pos = satEntity.position.getValue(time, new Cesium.Cartesian3());
+        if (!pos) return pos;
+        const nadir = Cesium.Cartesian3.normalize(
+            Cesium.Cartesian3.negate(pos, new Cesium.Cartesian3()),
+            new Cesium.Cartesian3()
+        );
+        // Shift center down by half the cone length along nadir
+        return Cesium.Cartesian3.add(
+            pos,
+            Cesium.Cartesian3.multiplyByScalar(nadir, CONE_LENGTH / 2, new Cesium.Cartesian3()),
+            new Cesium.Cartesian3()
+        );
+    }, false);
+
+    viewer.entities.add({
+        availability: avail,
+        position: conePosition,
+        orientation: new Cesium.CallbackProperty((time) => {
+            const pos = satEntity.position.getValue(time, new Cesium.Cartesian3());
+            if (!pos) return Cesium.Quaternion.IDENTITY;
+            const nadir = Cesium.Cartesian3.negate(
+                Cesium.Cartesian3.normalize(pos, new Cesium.Cartesian3()),
+                new Cesium.Cartesian3()
+            );
+            const localZ = new Cesium.Cartesian3(0, 0, 1);
+            const axis   = Cesium.Cartesian3.cross(localZ, nadir, new Cesium.Cartesian3());
+            const angle  = Cesium.Cartesian3.angleBetween(localZ, nadir);
+            if (Cesium.Cartesian3.magnitude(axis) < 1e-6) {
+                return angle < 0.1 ? Cesium.Quaternion.IDENTITY
+                    : Cesium.Quaternion.fromAxisAngle(new Cesium.Cartesian3(1, 0, 0), Math.PI);
+            }
+            return Cesium.Quaternion.fromAxisAngle(
+                Cesium.Cartesian3.normalize(axis, new Cesium.Cartesian3()),
+                angle
+            );
+        }, false),
+        cylinder: {
+            length: CONE_LENGTH,
+            topRadius: CONE_LENGTH * Math.tan(CONE_HALF_ANGLE_RAD),
+            bottomRadius: 0,
+            material: color.withAlpha(0.08),
+            outline: true,
+            outlineColor: color.withAlpha(0.35),
+            outlineWidth: 1,
+            numberOfVerticalLines: 12,
+        }
+    });
+}
+
+// ── Load passes and build entities ───────────────────────────────────────────
+// The key fix for the timing issue: the pass durations are 10-130 seconds,
+// but the JSON trajectory only has points at FEASIBLE timesteps (10s apart).
+// CesiumJS SampledPositionProperty interpolates between samples correctly,
+// but the clock was jumping hours because passes were treated as full-day entities.
+// Fix: clamp each entity's availability to exactly its pass start/end times,
+// and set the clock multiplier based on whether ANY pass is currently active.
+
+let allPassEntities = [];  // [{entity, start, stop, name}]
+
+fetch('passes.json')
+    .then(r => r.json())
+    .then(data => {
+        data.satellites.forEach(sat => {
+            if (!sat.trajectory || sat.trajectory.length === 0) return;
+
+            const baseName  = sat.name.replace(/ \(Pass \d+\)$/, "").trim();
+            const color     = familyColor(baseName);
+            const airbus    = isAirbus(baseName);
+
+            // Build sampled position from trajectory
+            const posProp = new Cesium.SampledPositionProperty();
+            // Use LAGRANGE interpolation for smooth motion
+            posProp.interpolationDegree = 3;
+            posProp.interpolationAlgorithm = Cesium.LagrangePolynomialApproximation;
+
+            let tStart = null, tStop = null;
+
+            sat.trajectory.forEach(pt => {
+                const jd  = Cesium.JulianDate.fromIso8601(pt.time);
+                const pos = new Cesium.Cartesian3(...pt.ecef);
+                posProp.addSample(jd, pos);
+                if (!tStart) tStart = jd.clone();
+                tStop = jd.clone();
+            });
+
+            if (!tStart || !tStop) return;
+
+            // Availability: EXACTLY the pass window
+            const avail = new Cesium.TimeIntervalCollection([
+                new Cesium.TimeInterval({ start: tStart, stop: tStop })
+            ]);
+
+            // Satellite point entity
+            const satEntity = viewer.entities.add({
+                name: sat.name,
+                availability: avail,
+                position: posProp,
+                point: {
+                    pixelSize: airbus ? 10 : 7,
+                    color: color,
+                    outlineColor: airbus ? Cesium.Color.WHITE : Cesium.Color.BLACK,
+                    outlineWidth: airbus ? 2 : 1,
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                },
+                label: {
+                    text: baseName,
+                    font: airbus ? "bold 10px 'Courier New'" : "9px 'Courier New'",
+                    fillColor: color,
+                    outlineColor: Cesium.Color.BLACK,
+                    outlineWidth: 2,
+                    style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                    pixelOffset: new Cesium.Cartesian2(0, -16),
+                    disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                    show: new Cesium.ConstantProperty(true),
+                }
+            });
+
+            // Line of sight
+            viewer.entities.add({
+                availability: avail,
+                polyline: {
+                    positions: new Cesium.CallbackProperty((time) => {
+                        const sPos = posProp.getValue(time);
+                        return sPos ? [sPos, targetPos] : [];
+                    }, false),
+                    width: airbus ? 2.5 : 1.5,
+                    material: new Cesium.PolylineDashMaterialProperty({
+                        color: color.withAlpha(0.7),
+                        dashLength: 20,
+                        dashPattern: airbus ? 255 : 65280,
+                    }),
+                    depthFailMaterial: new Cesium.PolylineDashMaterialProperty({
+                        color: color.withAlpha(0.25),
+                        dashLength: 20,
+                    }),
+                }
+            });
+
+            // Sensor cone
+            addSensorCone(satEntity, color, avail);
+
+            allPassEntities.push({
+                entity: satEntity,
+                start:  tStart,
+                stop:   tStop,
+                name:   baseName,
+                airbus: airbus,
+                color:  color,
+            });
+        });
+
+        console.log(`Loaded ${allPassEntities.length} pass segments`);
+
+        // Initial camera
+        viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 1_200_000),
+            orientation: { heading: 0, pitch: Cesium.Math.toRadians(-85) },
+            duration: 2.0,
+        });
+    });
+
+// ── Autopilot: the core fix ───────────────────────────────────────────────────
+// Previous bug: clock multiplier was set every frame, causing jitter.
+// Also, passes were not properly time-windowed so the animation appeared
+// to show satellites moving over hours instead of seconds.
+//
+// Fix: track multiplier state, only update on change.
+// During a pass: slow to 1x real-time so you can actually see it.
+// Between passes: warp to next pass start, then pause for 0.5s before resuming.
+
+const WARP_SPEED    = 3000;   // between passes
+const CAPTURE_SPEED = 5;      // during a pass — real time
+const APPROACH_LEAD = 5;      // seconds before pass start to start slowing down
+
+let currentMultiplier = WARP_SPEED;
+let activePassNames   = [];
+let lastPassCount     = 0;
+
+function setMultiplier(m) {
+    if (m !== currentMultiplier) {
+        viewer.clock.multiplier = m;
+        currentMultiplier = m;
+    }
+}
+
+viewer.scene.preUpdate.addEventListener(() => {
+    const now = viewer.clock.currentTime;
+
+    // Find all currently active passes
+    const active = allPassEntities.filter(p => {
+        const afterStart  = Cesium.JulianDate.compare(now, p.start) >= 0;
+        const beforeStop  = Cesium.JulianDate.compare(now, p.stop)  <= 0;
+        return afterStart && beforeStop;
+    });
+
+    // Find next upcoming pass (within next 60s of sim time)
+    const upcoming = allPassEntities.filter(p => {
+        const secUntil = Cesium.JulianDate.secondsDifference(p.start, now);
+        return secUntil > 0 && secUntil < APPROACH_LEAD * WARP_SPEED / 60;
+    });
+
+    const statusEl  = document.getElementById("status-text");
+    const timeEl    = document.getElementById("time-text");
+    const passListEl = document.getElementById("pass-list");
+
+    // Clock display
+    const jsDate = Cesium.JulianDate.toDate(now);
+    const utcStr = jsDate.toUTCString().replace(" GMT", " UTC");
+    timeEl.innerText = utcStr;
+
+    if (active.length > 0) {
+        // During a pass: run at real time (1x)
+        setMultiplier(CAPTURE_SPEED);
+
+        const names = active.map(p => {
+            const tag = p.airbus ? `<span class="airbus-tag">[AIRBUS]</span> ` : "";
+            return `${tag}${p.name}`;
+        }).join("<br>");
+
+        statusEl.innerHTML =
+            `<span class="mode-capture">● PASS IN PROGRESS (${active.length} sat${active.length>1?"s":""})</span>`;
+
+        passListEl.innerHTML = active.map(p => {
+            const tag = p.airbus ? " ⚠ AIRBUS" : "";
+            return `<div style="color:${p.color.toCssColorString()}">${p.name}${tag}</div>`;
+        }).join("");
+
+        // Focus camera on first active satellite
+        if (lastPassCount === 0 && active.length > 0) {
+            const pos = active[0].entity.position.getValue(now);
+            if (pos) {
+                viewer.camera.flyTo({
+                    destination: Cesium.Cartesian3.fromElements(
+                        pos.x * 1.2, pos.y * 1.2, pos.z * 1.2),
+                    duration: 1.5,
+                });
+            }
+        }
+
+    } else {
+        // Between passes: warp
+        setMultiplier(WARP_SPEED);
+        statusEl.innerHTML = `<span class="mode-warp">▶ SCANNING (${WARP_SPEED}x)</span>`;
+        passListEl.innerHTML = "";
+
+        // Pan back to overview between passes
+        if (lastPassCount > 0) {
+            viewer.camera.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(TARGET_LON, TARGET_LAT, 1_200_000),
+                orientation: { heading: 0, pitch: Cesium.Math.toRadians(-85) },
+                duration: 1.5,
+            });
+        }
+    }
+
+    lastPassCount = active.length;
+});
+</script>
+</body>
+</html>
