@@ -10,8 +10,8 @@ from sgp4.api import Satrec, jday
 # ── Config ──────────────────────────────────────────────────────────────────
 
 TLE_FILEPATH = '3le_02-25-26.txt'
-JSON_OUT = "passes.json"
-PASS_SUMMARY = "pass_summary.csv"
+JSON_OUT = "docs/passes.json"
+PASS_SUMMARY = "results/pass_summary.csv"
 
 # Target: Prince Sultan Air Base
 TARGET_LAT_DEG        =  24.06242524 # sourced to match MizarVision release using Google Earth
