@@ -48,8 +48,8 @@ TARGET_LAT =  24.06242524
 TARGET_LON =  47.56129747
 TARGET_NAME = "Prince Sultan AB"
 
-CSV_PATH  = "pass_summary.csv"
-JSON_PATH = "passes.json"
+CSV_PATH  = "results/pass_summary.csv"
+JSON_PATH = "docs/passes.json"
 
 # Map extent (degrees) around target
 MAP_BUFFER = 3.0   # degrees
@@ -225,7 +225,7 @@ def fig1_ground_tracks(df, passes):
     ax.set_facecolor("#0d1117")
 
     plt.tight_layout()
-    out = "figure1_ground_tracks.png"
+    out = "results/figure1_ground_tracks.png"
     plt.savefig(out, dpi=200, bbox_inches="tight", facecolor="#0d1117")
     print(f"Saved: {out}")
     plt.close()
@@ -301,9 +301,7 @@ def fig2_timeline(df):
                     framealpha=0.85, ncol=2)
 
     ax.set_title(
-        "Satellite Collection Opportunities over Prince Sultan AB  (Feb 23–27, 2026)\n"
-        "Each point = one feasible pass  |  Size = pass duration  |  "
-        "Airbus satellites outlined in white",
+        "Satellite Collection Opportunities over Prince Sultan AB  (Feb 23-27, 2026)",
         color="white", fontsize=11, pad=10
     )
 
@@ -312,7 +310,7 @@ def fig2_timeline(df):
     ax.axhline(85, color="#444", linewidth=0.6, linestyle=":")
 
     plt.tight_layout()
-    out = "figure2_timeline.png"
+    out = "results/figure2_timeline.png"
     plt.savefig(out, dpi=200, bbox_inches="tight", facecolor="#0d1117")
     print(f"Saved: {out}")
     plt.close()
