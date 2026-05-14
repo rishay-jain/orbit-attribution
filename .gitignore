@@ -219,3 +219,6 @@ __marimo__/
 
 #mac
 *.DS_Store
+
+# for local dev work that does not need to be pushed
+intermediates/*
