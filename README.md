@@ -79,7 +79,16 @@ To execute the simulation and generate the results:
 
 ```bash
 # Install dependencies
-pip install numpy sgp4 pandas
+pip install numpy sgp4 pandas matplotlib contextily
 
 # Run the simulation
 python pipeline.py
+
+```
+
+### Epilogue: The View from LEO
+
+Numbers in a CSV tell one story; watching the orbital mechanics play out tells another.
+For those interested in seeing the math in motion, the SGP4 propagation and target collection windows have been mapped into a live 3D environment using CesiumJS. You can watch the simulated timeline, track the ground footprints, and see exactly how crowded the skies were over Prince Sultan Air Base during the Operation Epic Fury window.
+
+[Enter the Interactive Orbital Playback](https://rishay-jain.github.io/orbit-attribution/)
