@@ -20,8 +20,8 @@ The simulation uses strict thresholds to filter out passes that would yield unus
 | **Target Latitude** | `24.06242524°` | Sourced to match MizarVision release using Google Earth |
 | **Target Longitude** | `47.56129747°` | Prince Sultan Air Base |
 | **Target Altitude** | `0.481 km` | Surface elevation |
-| **Window Start** | `2026-02-23 00:00:00 UTC` | Operation Epic Fury timeline |
-| **Window End** | `2026-02-27 23:59:59 UTC` | Operation Epic Fury timeline |
+| **Window Start** | `2026-02-23 00:00:00 UTC` | Days leading up to Operation Epic Fury |
+| **Window End** | `2026-02-27 23:59:59 UTC` | Conflict began the following day |
 | **Timestep** | `10 seconds` | Propagation resolution |
 | **Min Elevation Angle** | `45.0°` | Determines LoS optical path (Ideal: 90°) |
 | **Max Off-Nadir Angle** | `15.0°` | Determines skewness of image (Ideal: 0°) |
@@ -51,22 +51,18 @@ Timeline detailing when specific satellites passed over the target area within t
 
 ![Timeline](results/figure2_timeline.png)
 
-## Key Findings: The "Damning" Results
+## Key Findings
 
 The policy argument hinges on attribution vs. feasibility. The simulation reveals that multiple Chinese sovereign and commercial platforms (e.g., GAOFEN, YAOGAN) had near-perfect, direct-overhead passes with off-nadir angles close to 0°, making them highly capable of capturing the necessary imagery without relying on Airbus.
 
 The table below highlights the most optimal passes (lowest off-nadir angles, highest elevation) during the timeframe:
 
-| Satellite | Pass_Start_UTC | Duration_Seconds | Max_Elevation_deg | Min_Off_Nadir_deg | Min_Sun_Elevation_deg |
-|:---|:---|---:|---:|---:|---:|
-| GAOFEN 2 | 2026-02-23 06:44:40 | 50 | 88.21 | 1.73 | 42.35 |
-| GAOFEN 9 04 | 2026-02-23 07:07:20 | 30 | 84.99 | 4.71 | 46.08 |
-| SPOT 7 | 2026-02-27 06:46:20 | 60 | 84.68 | 4.83 | 43.81 |
-| YAOGAN-39 02A | 2026-02-27 07:04:50 | 30 | 84.72 | 5.02 | 46.92 |
-| YAOGAN-39 03B | 2026-02-27 06:30:00 | 20 | 81.84 | 7.65 | 40.88 |
-| GAOFEN DUOMO (GFDM) | 2026-02-23 06:37:10 | 30 | 76.38 | 12.32 | 41.04 |
-| YAOGAN 9A | 2026-02-23 06:51:10 | 20 | 74.39 | 14.0 | 43.45 |
-| YAOGAN-43 02E | 2026-02-27 06:49:00 | 10 | 74.86 | 14.14 | 44.27 |
+| Satellite          | Window Start (UTC) | Duration (sec) | Minimum Off-Nadir (deg) | Minimum Range (km) |
+| ------------------ | ------------------ | -------------: | ----------------------: | -----------------: |
+| SuperView Neo 1-01 | 2/23/2026 7:29:40  |             30 |                    5.82 |             526.03 |
+| Gaofen 11-02       | 2/24/2026 10:50:40 |             40 |                    4.92 |             511.07 |
+| SuperView Neo 1-02 | 2/26/2026 7:29:10  |             40 |                    7.57 |             528.46 |
+| SuperView Neo 3-02 | 2/26/2026 7:44:50  |             40 |                    4.00 |             500.18 |
 
 *These results demonstrate that the capability to image the target was highly proliferated among adversary assets, undermining the single-source attribution to Airbus.*
 
